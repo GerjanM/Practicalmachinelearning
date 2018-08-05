@@ -1,0 +1,76 @@
+---
+title: "Practical machine learning assignment"
+author: "Sarath G"
+date: "5 August 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+Objective
+
+To determine the manner in which the participants did the excercise. This is the classe variable.
+
+Getting and cleaning the data
+
+```{r, echo=TRUE}
+library(caret)
+## Reading Data
+traindata <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+testdata <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+
+traindata <- traindata[, colSums(is.na(traindata)) == 0] 
+testdata <- testdata[, colSums(is.na(testdata)) == 0] 
+
+#Removing First 7 coloumns as the information within them is not useful towards bulding the model
+traindata <- traindata[, -(1:7)]
+testdata <- testdata[, -(1:7)]
+
+##Partitioning the data for cross validation (70/30)
+trainPart <- createDataPartition(y = traindata$classe, p = 0.7, list = FALSE)
+training <- traindata[trainPart,]
+testing <- traindata[-trainPart,]
+```
+
+Building the Model
+
+Random forests method used to make the prediction model, this is tested against the test set in order to build a confusion matrix.
+
+```{r echo=TRUE}
+ctrl <- trainControl(method = "cv", 5)
+rfModel <- train(classe ~ ., method = "rf", data = training, trControl = ctrl, ntree = 150)
+p <- predict(rfModel, testing)
+confusionMatrix(testing$classe, p)
+
+#Sample of error 
+
+cm <- table(testing$classe, p)
+1 - (sum(diag(cm))/ length(p))
+```
+
+The above model can now be used to predict the classe variable from the test set..
+
+```{r echo=TRUE}
+results <- predict(rfModel, testdata)
+results
+```
+
+Submission for assingment
+```{r echo=TRUE}
+pml_write_files = function(x) {
+     n = length(x)
+     for(i in 1:n) {
+         filename = paste0("problem_id_", i, ".txt")
+         write.table(x[i], file=filename, quote=FALSE, row.names=FALSE, col.names=FALSE)
+     }
+ }
+
+pml_write_files(results)
+```
+
